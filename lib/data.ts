@@ -2,14 +2,14 @@
 
 import OpenAI from "openai";
 import axios from "axios";
+import { encode } from "punycode";
 
 export async function fetchResponse(prompt: string): Promise<void> {
   const openai = new OpenAI({ apiKey: process.env.OPEN_AI_KEY });
   const messages = [
     {
       role: "system",
-      content:
-        "you answer in short ordered lists. Always add artist name to a song",
+      content: "you answer in short ordered lists. Always add artist name",
     },
     { role: "user", content: prompt },
   ];
@@ -24,7 +24,7 @@ export async function fetchResponse(prompt: string): Promise<void> {
           properties: {
             query: {
               type: "string",
-              description: "The name of the song, e.g From the Start by Laufey",
+              description: "The list of songs to be searched",
             },
           },
           required: ["query"],
@@ -40,9 +40,56 @@ export async function fetchResponse(prompt: string): Promise<void> {
 
   if (content) {
     const splitContent = content.split(/\d+\.\s*|\-\s*/);
-    const formatedContent = splitContent
+    let formatedContent = splitContent
       .filter((s) => s.trim())
       .map((s) => s.trim());
+    for (let i = 0; i < formatedContent.length; i++) {
+      // find out how to remove nested quotations
+      formatedContent[i] = formatedContent[i].replace(/"/g, "");
+      console.log(formatedContent[i]);
+    }
+    const jsonFormatedContent = JSON.stringify(formatedContent);
+    const encodedQuery = encodeURI(jsonFormatedContent);
+    console.log(encodedQuery);
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: messages,
+        tools: tools,
+      });
+      const responseMessage = response.choices[0].message;
+
+      const toolCalls = responseMessage.tool_calls;
+      if (responseMessage.tool_calls) {
+        // JSON maybe be invalid, add check later
+        const availableFunctions = {
+          get_tracks: testEndpoint,
+        };
+        messages.push(responseMessage);
+        for (const toolCall of toolCalls) {
+          const functionName = toolCall.function.name;
+          const functionToCall = availableFunctions[functionName];
+          const functionArgs = jsonFormatedContent;
+          const functionResponse = await functionToCall(functionArgs);
+          if (functionResponse) {
+            return;
+          }
+          messages.push({
+            tool_call_id: toolCall.id,
+            role: "tool",
+            name: functionName,
+            content: functionResponse,
+          });
+        }
+        // const thirdResponse = await openai.chat.completions.create({
+        //   model: "gpt-3.5-turbo",
+        //   messages: messages,
+        // });
+      }
+    } catch (error) {
+      console.error("error occured --------- : ", error);
+      console.log("messages -------- : ", messages);
+    }
   }
 }
 
@@ -51,7 +98,6 @@ export async function testEndpoint(query: string) {
     const response = await axios.get("http://127.0.0.1:5000/api/tracks", {
       params: {
         query: query,
-        num_results: 10,
       },
     });
     console.log(response.data);
