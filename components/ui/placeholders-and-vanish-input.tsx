@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useFormStatus } from "react-dom";
 
 export function PlaceholdersAndVanishInput({
   placeholders,
@@ -12,7 +13,6 @@ export function PlaceholdersAndVanishInput({
   action: (prompt: string) => Promise<void>;
 }) {
   const [currentPlaceholder, setCurrentPlaceholder] = useState(0);
-
   useEffect(() => {
     let interval: any;
     const startAnimation = () => {

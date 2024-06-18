@@ -2,7 +2,11 @@
 
 import OpenAI from "openai";
 import axios from "axios";
-import { encode } from "punycode";
+import { createClient } from "@/utils/supabase/server";
+import { cookies } from "next/headers";
+
+const cookieStore = cookies();
+const supabase = createClient(cookieStore);
 
 export async function fetchResponse(prompt: string): Promise<void> {
   const openai = new OpenAI({ apiKey: process.env.OPEN_AI_KEY });
@@ -49,8 +53,6 @@ export async function fetchResponse(prompt: string): Promise<void> {
       console.log(formatedContent[i]);
     }
     const jsonFormatedContent = JSON.stringify(formatedContent);
-    const encodedQuery = encodeURI(jsonFormatedContent);
-    console.log(encodedQuery);
     try {
       const response = await openai.chat.completions.create({
         model: "gpt-3.5-turbo",
@@ -59,11 +61,11 @@ export async function fetchResponse(prompt: string): Promise<void> {
       });
       const responseMessage = response.choices[0].message;
 
+      // Begin the tool call. Do I need more functions?
       const toolCalls = responseMessage.tool_calls;
       if (responseMessage.tool_calls) {
-        // JSON maybe be invalid, add check later
         const availableFunctions = {
-          get_tracks: testEndpoint,
+          get_tracks: fetchTracks,
         };
         messages.push(responseMessage);
         for (const toolCall of toolCalls) {
@@ -81,10 +83,6 @@ export async function fetchResponse(prompt: string): Promise<void> {
             content: functionResponse,
           });
         }
-        // const thirdResponse = await openai.chat.completions.create({
-        //   model: "gpt-3.5-turbo",
-        //   messages: messages,
-        // });
       }
     } catch (error) {
       console.error("error occured --------- : ", error);
@@ -93,7 +91,7 @@ export async function fetchResponse(prompt: string): Promise<void> {
   }
 }
 
-export async function testEndpoint(query: string) {
+export async function fetchTracks(query: string) {
   try {
     const response = await axios.get("http://127.0.0.1:5000/api/tracks", {
       params: {
@@ -101,7 +99,35 @@ export async function testEndpoint(query: string) {
       },
     });
     console.log(response.data);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data, error } = await supabase
+      .from("UrlStore")
+      .insert([{ spotify_links: response.data, user: user?.id }])
+      .select();
+
+    if (error) {
+      console.log(error);
+    }
   } catch (error) {
     console.error(error);
   }
+}
+
+export async function testSupaBase() {
+  console.log("Querying the database");
+  let { data: test } = await supabase.from("UrlStore").select("*");
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from("UrlStore")
+    .insert([{ user: user?.id }])
+    .select();
+  console.log(data, error, user);
+  console.log(test);
 }
