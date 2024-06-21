@@ -24,6 +24,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 Enter in requests and get music recommendations you can listen to right away
 
-
 TODO:
+
 - Fix requests not working properly for classical music titles
+- Add a loading state

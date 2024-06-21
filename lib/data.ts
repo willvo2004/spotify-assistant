@@ -5,6 +5,18 @@ import axios from "axios";
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 
+type LinksJson = {
+  spotify_url: string[];
+};
+
+type oembedResponse = {
+  html: string;
+  width: number;
+  height: number;
+  provider_name: string;
+  iframe_url: string;
+};
+
 const cookieStore = cookies();
 const supabase = createClient(cookieStore);
 
@@ -117,17 +129,37 @@ export async function fetchTracks(query: string) {
   }
 }
 
+export async function fetchEmbed(request: LinksJson) {
+  const { spotify_url } = request;
+  let oembedUriList = [];
+
+  for (const link of spotify_url) {
+    try {
+      const response = await axios.get("https://open.spotify.com/oembed?", {
+        params: {
+          url: link,
+        },
+      });
+      const data = response.data as oembedResponse;
+      oembedUriList.push(data.iframe_url);
+    } catch (error) {
+      console.log("Error returning oembed: ", error);
+    }
+  }
+  return oembedUriList;
+}
+
 export async function testSupaBase() {
   console.log("Querying the database");
   let { data: test } = await supabase.from("UrlStore").select("*");
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data, error } = await supabase
-    .from("UrlStore")
-    .insert([{ user: user?.id }])
-    .select();
-  console.log(data, error, user);
+  // const {
+  //   data: { user },
+  // } = await supabase.auth.getUser();
+  // const { data, error } = await supabase
+  //   .from("UrlStore")
+  //   .insert([{ spotify_links: "{}", user: user?.id }])
+  //   .select();
+  // console.log(data, error, user);
   console.log(test);
 }
