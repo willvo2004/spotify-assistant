@@ -1,7 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { useFormStatus } from "react-dom";
 
 export function PlaceholdersAndVanishInput({
   placeholders,
@@ -150,7 +149,7 @@ export function PlaceholdersAndVanishInput({
       animate(maxX);
     }
   };
-  const handleAction = (formData: FormData) => {
+  const handleAction = async (formData: FormData) => {
     vanishAndSubmit();
     action(formData.get("prompt") as string);
   };

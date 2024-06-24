@@ -17,7 +17,6 @@ export function RealTimeIframes() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "UrlStore" },
         async (payload) => {
-          console.log("change received!", payload.new.spotify_links);
           const spotifyOpenList = payload.new.spotify_links;
           const newIFrameList = await fetchEmbed(spotifyOpenList);
           setIFrameList((prevList) => [...prevList, ...newIFrameList]);
