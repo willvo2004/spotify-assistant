@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from multiprocessing.dummy import Pool as ThreadPool
 import requests
 from googlesearch import search
 import json
@@ -13,16 +14,17 @@ def search_spotify_songs():
         return jsonify({"error": "Query parameter is required"}), 400
 
     queryListJson = json.loads(queryList)
-    response = list(map(searchEngine, queryListJson))
+    pool = ThreadPool(6)
+    response = list(pool.map(searchEngine, queryListJson))
     return jsonify({"spotify_url": response}), 200
 
 
 def searchEngine(query):
     # Modify the query to focus on Spotify results
-    modified_query = f"{query} site:open.spotify.com/track"
+    modified_query = f"{query} site:open.spotify.com"
 
     # Replace with your search implementation or a mock function
-    search_results = search(modified_query, num_results=5)
+    search_results = search(modified_query, num_results=5, timeout=1)
 
     try:
         results_to_list = list(search_results)
