@@ -28,3 +28,4 @@ TODO:
 
 - Fix requests not working properly for classical music titles
 - Add a loading state
+- Supabase project cannot be restored. This project remains unusable. Will look into redoing this project again
